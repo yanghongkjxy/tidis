@@ -17,12 +17,15 @@ from rediswrap import RedisWrapper
 class StringTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        print 'connect to 127.0.0.1:7379\n'
-        cls.r = RedisWrapper('127.0.0.1', 7379).get_instance()
+        print 'connect to 127.0.0.1:5379\n'
+        cls.r = RedisWrapper('127.0.0.1', 5379).get_instance()
         cls.k1 = '__string1__'
         cls.v1 = 'value1'
         cls.k2 = '__string2__'
         cls.v2 = 'value2'
+        cls.bitPos = 0
+        cls.bitVal = 1
+	
 
     def setUp(self):
         self.r.delete(self.k1)
@@ -39,6 +42,43 @@ class StringTest(unittest.TestCase):
         v1 = self.r.get(self.k1)
         self.assertEqual(self.v1, v1, '{} != {}'.format(v1, self.v1))
 
+    def test_set_expire(self):
+        self.assertTrue(self.r.set(self.k2, self.v2, px=5000))
+        v2 = self.r.get(self.k2)
+        self.assertEqual(self.v2, v2, '{} != {}'.format(v2, self.v2)) 
+
+        self.assertTrue(self.r.set(self.k2, self.v1, ex=5))
+        v1 = self.r.get(self.k2)
+        self.assertEqual(self.v1, v1, '{} != {}'.format(v1, self.v1))
+
+    def test_set_exists(self):
+        self.assertTrue(self.r.set(self.k2, self.v2, nx=True))
+        v2 = self.r.get(self.k2)
+        self.assertEqual(self.v2, v2, '{} != {}'.format(v2, self.v2))
+    
+        self.assertTrue(self.r.set(self.k2, self.v1, xx=True))
+        v1 = self.r.get(self.k2)
+        self.assertEqual(self.v1, v1, '{} != {}'.format(self.v1, v1))
+
+        self.assertTrue(self.r.set(self.k2, self.v2, ex=5, xx=True))
+        v2 = self.r.get(self.k2)
+        self.assertEqual(self.v2, v2, '{} != {}'.format(v2, self.v2))
+
+    def test_setbit(self):
+        ret = self.r.setbit(self.k1, self.bitPos, self.bitVal)
+        self.assertEqual(ret, 1-self.bitVal, '{} != {}'.format(ret, 1-self.bitVal))
+
+    def test_getbit(self):
+        ret = self.r.setbit(self.k1, self.bitPos, self.bitVal)
+        self.assertEqual(ret, 1-self.bitVal, '{} != {}'.format(ret, 1-self.bitVal))
+        ret = self.r.getbit(self.k1, self.bitPos)
+        self.assertEqual(ret, self.bitVal, '{} != {}'.format(ret, self.bitVal))
+
+    def test_bitcount(self):
+        self.r.set(self.k1, 'foobar')
+        ret = self.r.bitcount(self.k1)
+        self.assertEqual(ret, 26, '{} != {}'.format(ret, '2'))
+    
     def test_del(self):
         self.assertTrue(self.r.set(self.k1, self.v1))
         v1 = self.r.get(self.k1)

@@ -16,29 +16,69 @@ Tidis is like [TiDB](https://github.com/pingcap/tidb) layer, providing protocol 
 * Data safety, no data loss, Raft replication
 * Transaction support
 
-This repo is `WIP` now and has lots of work to do, and for test only.
-
 Any pull requests are welcomed.
 
 ## Architecture
 
+*Architechture of tidis*
+
 ![architecture](docs/tidis-arch.png)
 
-## Build
+*Architechture of tikv*
+
+![](https://pingcap.com/images/blog/TiKV_%20Architecture.png)
+- Placement Driver (PD): PD is the brain of the TiKV system which manages the metadata about Nodes, Stores, Regions mapping, and makes decisions for data placement and load balancing. PD periodically checks replication constraints to balance load and data automatically.
+- Node: A physical node in the cluster. Within each node, there are one or more Stores. Within each Store, there are many Regions.
+- Store: There is a RocksDB within each Store and it stores data in local disks.
+- Region: Region is the basic unit of Key-Value data movement and corresponds to a data range in a Store. Each Region is replicated to multiple Nodes. These multiple replicas form a Raft group. A replica of a Region is called a Peer.
+
+
+## 1. Run tidis with docker-compose in one command
+
+```
+git clone https://github.com/yongman/tidis-docker-compose.git
+cd tidis-docker-compose/
+docker-compose up -d
+```
+
+Or follow [tidis-docker-compose](https://github.com/yongman/tidis-docker-compose) guide to run with `docker-compose`
+
+## 2. Build or Docker mannually
+
+### Build from source
 
 ```
 git clone https://github.com/yongman/tidis.git
-make
+cd tidis && make
 ```
 
-## Run TiKV cluster for test
+### Pull from docker
+
+```
+docker pull yongman/tidis
+```
+
+### Run TiKV cluster for test
 
 Use `docker run tikv` for test, just follow [PingCAP official guide](https://github.com/pingcap/docs/blob/master/op-guide/docker-deployment.md), you just need to deploy PD and TiKV servers, Tidis will take the role of TiDB.
 
-## Run Tidis
+### Run Tidis or docker
+
+#### Run tidis from executable file
 
 ```
-bin/bin/tidis-server -backend <pd address, ip:port>
+bin/tidis-server -conf config.toml
+```
+
+#### Run tidis from docker
+
+```
+docker run  -d --name tidis -p 5379:5379 -v {your_config_dir}:/data yongman/tidis -conf="/data/config.toml"
+```
+
+## 3. Client request
+
+```
 redis-cli -p 5379
 127.0.0.1:5379> get a
 "1"
@@ -67,41 +107,45 @@ redis-cli -p 5379
 ## Already supported commands
 ### string
 
-    +-----------+----------------------------------+
-    |  command  |              format              |
-    +-----------+----------------------------------+
-    |    get    | get key                          |
-    +-----------+----------------------------------+
-    |    set    | set key value                    |
-    +-----------+----------------------------------+
-    |    del    | del key1 key2 ...                |
-    +-----------+----------------------------------+
-    |    mget   | mget key1 key2 ...               |
-    +-----------+----------------------------------+
-    |    mset   | mset key1 value1 key2 value2 ... |
-    +-----------+----------------------------------+
-    |    incr   | incr key                         |
-    +-----------+----------------------------------+
-    |   incrby  | incr key step                    |
-    +-----------+----------------------------------+
-    |    decr   | decr key                         |
-    +-----------+----------------------------------+
-    |   decrby  | decrby key step                  |
-    +-----------+----------------------------------+
-    |   strlen  | strlen key                       |
-    +-----------+----------------------------------+
-    |  pexpire  | pexpire key int                  |
-    +-----------+----------------------------------+
-    | pexpireat | pexpireat key timestamp(ms)      |
-    +-----------+----------------------------------+
-    |   expire  | expire key int                   |
-    +-----------+----------------------------------+
-    |  expireat | expireat key timestamp(s)        |
-    +-----------+----------------------------------+
-    |    pttl   | pttl key                         |
-    +-----------+----------------------------------+
-    |    ttl    | ttl key                          |
-    +-----------+----------------------------------+
+    +-----------+-------------------------------------+
+    |  command  |               format                |
+    +-----------+-------------------------------------+
+    |    get    | get key                             |
+    +-----------+-------------------------------------+
+    |    set    | set key value [EX sec|PX ms][NX|XX] | 
+    +-----------+-------------------------------------+
+    |   getbit  | getbit key offset                   |
+    +-----------+-------------------------------------+
+    |   setbit  | setbit key offset value             |
+    +-----------+-------------------------------------+
+    |    del    | del key1 key2 ...                   |
+    +-----------+-------------------------------------+
+    |    mget   | mget key1 key2 ...                  |
+    +-----------+-------------------------------------+
+    |    mset   | mset key1 value1 key2 value2 ...    |
+    +-----------+-------------------------------------+
+    |    incr   | incr key                            |
+    +-----------+-------------------------------------+
+    |   incrby  | incr key step                       |
+    +-----------+-------------------------------------+
+    |    decr   | decr key                            |
+    +-----------+-------------------------------------+
+    |   decrby  | decrby key step                     |
+    +-----------+-------------------------------------+
+    |   strlen  | strlen key                          |
+    +-----------+-------------------------------------+
+    |  pexpire  | pexpire key int                     |
+    +-----------+-------------------------------------+
+    | pexpireat | pexpireat key timestamp(ms)         |
+    +-----------+-------------------------------------+
+    |   expire  | expire key int                      |
+    +-----------+-------------------------------------+
+    |  expireat | expireat key timestamp(s)           |
+    +-----------+-------------------------------------+
+    |    pttl   | pttl key                            |
+    +-----------+-------------------------------------+
+    |    ttl    | ttl key                             |
+    +-----------+-------------------------------------+
 
 ### hash
 
